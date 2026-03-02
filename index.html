@@ -700,7 +700,7 @@ document.getElementById("datePicker").value = state.dateISO;
 state.planDay = computePlanDay(state.dateISO, state.weekMode);
 renderToday(state.dateISO, state.planDay);
 
-// Service worker
+// Service worker - you can remove this if you want to access it online only and remove caching headache
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
