@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="icon" href="./favicon.ico" />
+
+  <title>Fit Tracker</title>
+
+  <style>
+    :root { --bg:#0b0b0c; --card:#151518; --muted:#a7a7ad; --text:#f4f4f6; --line:#24242a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      background:var(--bg); color:var(--text); }
+    header { padding:16px 16px 10px; position: sticky; top:0; background: linear-gradient(#0b0b0c 70%, rgba(11,11,12,0)); backdrop-filter: blur(6px); }
+    h1 { margin:0; font-size:20px; letter-spacing:0.2px; }
+    .sub { margin-top:6px; color:var(--muted); font-size:13px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .wrap { padding: 0 16px 90px; max-width: 820px; margin: 0 auto; }
+    .tabs { display:flex; gap:10px; margin-top:10px; }
+    .tab { padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--text); font-weight:600; font-size:14px; }
+    .tab.active { background: var(--card); }
+    .pill { padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:12px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:12px 0; }
+    .card h2 { margin:0 0 6px; font-size:16px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .focus { color:var(--muted); font-size:13px; margin-top:4px; }
+    .grid { display:grid; grid-template-columns: 1.3fr 0.7fr; gap:10px; }
+    @media (max-width: 560px){ .grid { grid-template-columns: 1fr; } }
+    .ex { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; }
+    .ex:first-child { border-top:none; padding-top:0; margin-top:0; }
+    .exname { font-weight:800; }
+    .target { color:var(--muted); font-size:12px; margin-top:2px; }
+    .rounds { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    .rbox { flex: 1 1 130px; min-width:130px; border:1px solid var(--line); border-radius:12px; padding:10px; }
+    .rbox label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input { width:100%; padding:10px; border-radius:10px; border:1px solid var(--line); background:#0f0f12; color:var(--text); font-size:16px; }
+    input::placeholder { color:#666; }
+
+    .btnbar { position: fixed; bottom: 0; left:0; right:0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: rgba(11,11,12,0.92); border-top:1px solid var(--line); backdrop-filter: blur(10px); }
+    .btns { max-width:820px; margin:0 auto; display:flex; gap:10px; flex-wrap:wrap; }
+    button.primary { flex:1; padding:14px 12px; border-radius:14px; border:1px solid var(--line); background: #f4f4f6; color:#111; font-weight:900; font-size:15px; }
+    button.secondary { padding:14px 12px; border-radius:14px; border:1px solid var(--line); background: transparent; color:var(--text); font-weight:800; font-size:15px; }
+    button.danger { padding:14px 12px; border-radius:14px; border:1px solid #4a1f1f; background: transparent; color:#ffb3b3; font-weight:900; font-size:15px; }
+
+    .histItem { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:12px 0; border-top:1px solid var(--line); }
+    .histItem:first-child { border-top:none; }
+    .small { font-size:12px; color:var(--muted); margin-top:3px; }
+    .badge { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+    .ok { color:#b8f7c2; border-color:#214a2b; }
+
+    .hint { font-size:12px; color:var(--muted); line-height:1.4; }
+    .topcontrols { margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    select, .datepick { padding:10px 10px; border-radius:12px; border:1px solid var(--line); background:#0f0f12; color:var(--text); font-size:14px; }
+    .linkbtn { background:transparent; border:none; color:#cfd3ff; font-weight:800; padding:0; cursor:pointer; }
+
+    /* Timer UI */
+    .timerbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    .timerread { font-variant-numeric: tabular-nums; font-weight:900; letter-spacing:0.3px; }
+    .tbtn { padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--text); font-weight:900; }
+    .tbtn.small { padding:8px 10px; font-size:13px; }
+    .tbtn.on { background:#f4f4f6; color:#111; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Fit Tracker (Local)</h1>
+    <div class="sub">
+      <span class="pill" id="todayPill">—</span>
+      <span class="pill" id="focusPill">—</span>
+      <span class="pill" id="statusPill">Not completed</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabToday" type="button">Today</button>
+      <button class="tab" id="tabHistory" type="button">History</button>
+    </div>
+
+    <div class="topcontrols" id="todayControls">
+      <input class="datepick" id="datePicker" type="date" />
+      <select id="athletePick" title="Athlete">
+        <option value="Rahul">Rahul</option>
+        <option value="Manvik">Manvik</option>
+      </select>
+      <select id="weekMode" title="Week mode">
+        <option value="auto" selected>Auto (Mon–Fri)</option>
+        <option value="forceMon">Force Monday</option>
+        <option value="forceTue">Force Tuesday</option>
+        <option value="forceWed">Force Wednesday</option>
+        <option value="forceThu">Force Thursday</option>
+        <option value="forceFri">Force Friday</option>
+      </select>
+      <button class="linkbtn" id="copyYesterday" type="button">Copy yesterday</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="viewToday"></div>
+    <div id="viewHistory" style="display:none"></div>
+  </main>
+
+  <div class="btnbar" id="btnbar">
+    <div class="btns">
+      <button class="secondary" id="btnSave" type="button">Save</button>
+      <button class="primary" id="btnComplete" type="button">Save & Mark Complete</button>
+      <button class="danger" id="btnReset" type="button">Reset Day</button>
+    </div>
+  </div>
+
+<script>
+/** ---------------------------
+ *  PLAN
+ *  --------------------------- */
+const PLAN = {
+  Monday: {
+    focus: "Strength Pushups + Lower Body",
+    rounds: 3,
+    exercises: [
+      { name:"Pushups", type:"reps", targets:{Manvik:"8–12", Rahul:"20"} },
+      { name:"Squats", type:"reps", targets:{Manvik:"15", Rahul:"20"} },
+      { name:"Reverse Lunges (each leg)", type:"reps", targets:{Manvik:"8", Rahul:"10"} },
+      { name:"Plank", type:"time", targets:{Manvik:"20 sec", Rahul:"45 sec"} },
+    ]
+  },
+  Tuesday: {
+    focus: "Speed Conditioning + Agility",
+    rounds: 3,
+    exercises: [
+      { name:"High Knees", type:"time", targets:{Manvik:"20 sec", Rahul:"20 sec"} },
+      { name:"Skater Jumps", type:"reps", targets:{Manvik:"10 each side", Rahul:"10 each side"} },
+      { name:"Mountain Climbers", type:"time", targets:{Manvik:"20 sec", Rahul:"20 sec"} },
+      { name:"Fast Feet", type:"time", targets:{Manvik:"20 sec", Rahul:"20 sec"} },
+      { name:"Hallway Sprint", type:"reps", targets:{Manvik:"3 reps", Rahul:"3 reps"} },
+    ]
+  },
+  Wednesday: {
+    focus: "Core Sit-ups + Posture",
+    rounds: 3,
+    exercises: [
+      { name:"Sit-ups", type:"reps", targets:{Manvik:"12–15", Rahul:"20"} },
+      { name:"Plank", type:"time", targets:{Manvik:"20 sec", Rahul:"45 sec"} },
+      { name:"Side Plank", type:"time", targets:{Manvik:"20 sec", Rahul:"30 sec"} },
+      { name:"Glute Bridge", type:"reps", targets:{Manvik:"15", Rahul:"20"} },
+      { name:"Wall Angels", type:"reps", targets:{Manvik:"10", Rahul:"12"} },
+    ]
+  },
+  Thursday: {
+    focus: "Explosive Jumps + Power",
+    rounds: 3,
+    exercises: [
+      { name:"Vertical Jumps", type:"reps", targets:{Manvik:"8", Rahul:"8"} },
+      { name:"Broad Jumps", type:"reps", targets:{Manvik:"6", Rahul:"6"} },
+      { name:"Squat Jumps", type:"reps", targets:{Manvik:"8", Rahul:"8"} },
+      { name:"Imaginary Jump Rope", type:"time", targets:{Manvik:"30 sec", Rahul:"30 sec"} },
+    ]
+  },
+  Friday: {
+    focus: "Mobility (Light) Recovery + Flexibility",
+    rounds: 1,
+    exercises: [
+      { name:"Hamstring Stretch", type:"time", targets:{Manvik:"30 sec", Rahul:"30 sec"} },
+      { name:"Hip Flexor Stretch", type:"time", targets:{Manvik:"30 sec", Rahul:"30 sec"} },
+      { name:"Shoulder Mobility", type:"time", targets:{Manvik:"1 min", Rahul:"1 min"} },
+      { name:"Deep Breathing", type:"time", targets:{Manvik:"2 min", Rahul:"2 min"} },
+    ]
+  }
+};
+
+/** ---------------------------
+ *  Athlete + Storage (local-only per device)
+ *  Each athlete has a separate storage key on the same device.
+ *  --------------------------- */
+const BASE_STORE_KEY = "fit_tracker_sessions_v2";
+const ATHLETE_KEY = "fit_tracker_default_athlete_v1";
+
+function getAthlete() {
+  return localStorage.getItem(ATHLETE_KEY) || "Rahul";
+}
+function setAthlete(a) {
+  localStorage.setItem(ATHLETE_KEY, a);
+}
+function storeKey() {
+  return `${BASE_STORE_KEY}_${getAthlete()}`;
+}
+
+function loadAll() {
+  try { return JSON.parse(localStorage.getItem(storeKey())) || {}; }
+  catch { return {}; }
+}
+function saveAll(all) {
+  localStorage.setItem(storeKey(), JSON.stringify(all));
+}
+
+/** sessions structure (per athlete storage):
+ * { "YYYY-MM-DD": { date, weekday, focus, isComplete, logs: { [exerciseName]: [r1,r2,r3] } } }
+ */
+function isoToday(d=new Date()) {
+  const tz = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  return tz.toISOString().slice(0,10);
+}
+function weekdayOf(dateISO) {
+  const d = new Date(dateISO + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday:"long" });
+}
+function isWeekend(dayName) {
+  return dayName === "Saturday" || dayName === "Sunday";
+}
+function mapToPlanDay(dayName) {
+  if (isWeekend(dayName)) return "Monday";
+  if (PLAN[dayName]) return dayName;
+  return "Monday";
+}
+function forcedPlanDay(mode) {
+  const m = { forceMon:"Monday", forceTue:"Tuesday", forceWed:"Wednesday", forceThu:"Thursday", forceFri:"Friday" };
+  return m[mode] || null;
+}
+function computePlanDay(dateISO, weekMode) {
+  const forced = forcedPlanDay(weekMode);
+  if (forced) return forced;
+  return mapToPlanDay(weekdayOf(dateISO));
+}
+
+function ensureSession(dateISO, planDay) {
+  const all = loadAll();
+  if (!all[dateISO]) {
+    all[dateISO] = {
+      date: dateISO,
+      weekday: planDay,
+      focus: PLAN[planDay].focus,
+      isComplete: false,
+      logs: {}
+    };
+    saveAll(all);
+  }
+  return all[dateISO];
+}
+
+function setStatusPill(session) {
+  const el = document.getElementById("statusPill");
+  if (session.isComplete) {
+    el.textContent = "Completed ✅";
+    el.classList.add("ok");
+  } else {
+    el.textContent = "Not completed";
+    el.classList.remove("ok");
+  }
+}
+
+/** ---------------------------
+ *  Timer (one active at a time, per device)
+ *  --------------------------- */
+const TIMER = {
+  activeKey: null, // "YYYY-MM-DD|ExerciseName|roundIndex"
+  startMs: 0,
+  elapsedMs: 0,
+  intervalId: null
+};
+
+function timerKey(dateISO, exName, roundIdx) {
+  return `${dateISO}|${exName}|${roundIdx}`;
+}
+function formatMMSS(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+function stopAnyTimer() {
+  if (TIMER.intervalId) clearInterval(TIMER.intervalId);
+  TIMER.intervalId = null;
+  TIMER.activeKey = null;
+  TIMER.startMs = 0;
+  TIMER.elapsedMs = 0;
+}
+function getElapsedSeconds() {
+  const ms = TIMER.elapsedMs + (TIMER.activeKey ? (Date.now() - TIMER.startMs) : 0);
+  return Math.max(0, Math.round(ms / 1000));
+}
+
+/** ---------------------------
+ *  Rendering
+ *  --------------------------- */
+function renderToday(dateISO, planDay) {
+  const view = document.getElementById("viewToday");
+  view.innerHTML = "";
+
+  const plan = PLAN[planDay];
+  const session = ensureSession(dateISO, planDay);
+  const athlete = getAthlete();
+
+  document.getElementById("todayPill").textContent = `${dateISO} • ${planDay} • ${athlete}`;
+  document.getElementById("focusPill").textContent = plan.focus;
+  setStatusPill(session);
+
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const title = document.createElement("h2");
+  title.textContent = `${planDay}`;
+  card.appendChild(title);
+
+  const focus = document.createElement("div");
+  focus.className = "focus";
+  focus.textContent = plan.focus;
+  card.appendChild(focus);
+
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.style.marginTop = "10px";
+  hint.textContent = "Log per round. For time moves, use the timer (Stop auto-fills seconds).";
+  card.appendChild(hint);
+
+  plan.exercises.forEach((ex) => {
+    const exWrap = document.createElement("div");
+    exWrap.className = "ex";
+
+    const top = document.createElement("div");
+    top.className = "grid";
+
+    const left = document.createElement("div");
+    const nm = document.createElement("div");
+    nm.className = "exname";
+    nm.textContent = ex.name;
+    left.appendChild(nm);
+
+    const tg = document.createElement("div");
+    tg.className = "target";
+    tg.textContent = `Targets — Manvik: ${ex.targets.Manhvik ?? "—"} | Rahul: ${ex.targets.Rahul ?? "—"}`;
+    left.appendChild(tg);
+
+    const right = document.createElement("div");
+    right.className = "muted";
+    right.style.textAlign = "right";
+    right.textContent = `${plan.rounds} rounds • ${ex.type === "time" ? "seconds" : "reps"}`;
+
+    top.appendChild(left);
+    top.appendChild(right);
+    exWrap.appendChild(top);
+
+    const rounds = document.createElement("div");
+    rounds.className = "rounds";
+
+    const saved = (session.logs[ex.name] || []);
+
+    for (let i=0; i<3; i++) {
+      const rbox = document.createElement("div");
+      rbox.className = "rbox";
+
+      const lab = document.createElement("label");
+      lab.textContent = `Round ${i+1}`;
+      rbox.appendChild(lab);
+
+      const inp = document.createElement("input");
+      inp.type = "number";
+      inp.inputMode = "numeric";
+      inp.placeholder = ex.type === "time" ? "sec" : "reps";
+      inp.value = (saved[i] ?? "");
+      inp.dataset.exercise = ex.name;
+      inp.dataset.round = String(i);
+      inp.dataset.date = dateISO;
+
+      inp.addEventListener("input", (e) => {
+        const all = loadAll();
+        const s = ensureSession(dateISO, planDay);
+        const exName = e.target.dataset.exercise;
+        const r = Number(e.target.dataset.round);
+        const v = e.target.value === "" ? null : Number(e.target.value);
+
+        s.weekday = planDay;
+        s.focus = plan.focus;
+
+        if (!s.logs[exName]) s.logs[exName] = [null,null,null];
+        s.logs[exName][r] = v;
+
+        all[dateISO] = s;
+        saveAll(all);
+      });
+
+      rbox.appendChild(inp);
+
+      // Timer controls only for time exercises
+      if (ex.type === "time") {
+        const tbar = document.createElement("div");
+        tbar.className = "timerbar";
+
+        const read = document.createElement("div");
+        read.className = "timerread";
+        read.textContent = "0:00";
+
+        const btnStartStop = document.createElement("button");
+        btnStartStop.type = "button";
+        btnStartStop.className = "tbtn small";
+        btnStartStop.textContent = "Start";
+
+        const btnReset = document.createElement("button");
+        btnReset.type = "button";
+        btnReset.className = "tbtn small";
+        btnReset.textContent = "Reset";
+
+        const k = timerKey(dateISO, ex.name, i);
+
+        function refreshButtonState() {
+          const isActive = (TIMER.activeKey === k);
+          btnStartStop.textContent = isActive ? "Stop" : "Start";
+          btnStartStop.classList.toggle("on", isActive);
+          if (isActive) read.textContent = formatMMSS(getElapsedSeconds());
+        }
+
+        btnStartStop.addEventListener("click", () => {
+          // switching to another timer stops current
+          if (TIMER.activeKey && TIMER.activeKey !== k) {
+            stopAnyTimer();
+            renderToday(state.dateISO, state.planDay);
+          }
+
+          if (TIMER.activeKey === k) {
+            // STOP
+            TIMER.elapsedMs += (Date.now() - TIMER.startMs);
+            const secs = getElapsedSeconds();
+            stopAnyTimer();
+
+            inp.value = String(secs);
+            inp.dispatchEvent(new Event("input", { bubbles:true }));
+
+            read.textContent = formatMMSS(secs);
+            refreshButtonState();
+          } else {
+            // START
+            TIMER.activeKey = k;
+            TIMER.startMs = Date.now();
+            TIMER.elapsedMs = 0;
+
+            TIMER.intervalId = setInterval(() => {
+              if (TIMER.activeKey === k) {
+                read.textContent = formatMMSS(getElapsedSeconds());
+              }
+            }, 200);
+
+            refreshButtonState();
+          }
+        });
+
+        btnReset.addEventListener("click", () => {
+          if (TIMER.activeKey === k) stopAnyTimer();
+          read.textContent = "0:00";
+          inp.value = "";
+          inp.dispatchEvent(new Event("input", { bubbles:true }));
+          renderToday(state.dateISO, state.planDay);
+        });
+
+        // if active, restore UI state
+        if (TIMER.activeKey === k) {
+          btnStartStop.classList.add("on");
+          btnStartStop.textContent = "Stop";
+        }
+
+        tbar.appendChild(read);
+        tbar.appendChild(btnStartStop);
+        tbar.appendChild(btnReset);
+        rbox.appendChild(tbar);
+      }
+
+      rounds.appendChild(rbox);
+    }
+
+    exWrap.appendChild(rounds);
+    card.appendChild(exWrap);
+  });
+
+  view.appendChild(card);
+}
+
+function renderHistory() {
+  const view = document.getElementById("viewHistory");
+  view.innerHTML = "";
+
+  const all = loadAll();
+  const dates = Object.keys(all).sort().reverse();
+
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const h2 = document.createElement("h2");
+  h2.textContent = `History • ${getAthlete()}`;
+  card.appendChild(h2);
+
+  const p = document.createElement("div");
+  p.className = "muted";
+  p.textContent = "Tap an entry to load it in Today view.";
+  card.appendChild(p);
+
+  if (dates.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "muted";
+    empty.style.marginTop = "12px";
+    empty.textContent = "No sessions yet.";
+    card.appendChild(empty);
+  } else {
+    dates.forEach(dateISO => {
+      const s = all[dateISO];
+      const item = document.createElement("div");
+      item.className = "histItem";
+
+      const left = document.createElement("div");
+      const title = document.createElement("div");
+      title.style.fontWeight = "900";
+      title.textContent = `${dateISO} • ${s.weekday}`;
+      const small = document.createElement("div");
+      small.className = "small";
+      small.textContent = s.focus || "";
+      left.appendChild(title);
+      left.appendChild(small);
+
+      const badge = document.createElement("div");
+      badge.className = "badge" + (s.isComplete ? " ok" : "");
+      badge.textContent = s.isComplete ? "Completed" : "Saved";
+
+      item.appendChild(left);
+      item.appendChild(badge);
+
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => {
+        state.dateISO = dateISO;
+        document.getElementById("datePicker").value = dateISO;
+
+        const planDay = (PLAN[s.weekday] ? s.weekday : mapToPlanDay(weekdayOf(dateISO)));
+        state.planDay = planDay;
+        state.weekMode = "auto";
+        document.getElementById("weekMode").value = "auto";
+
+        switchToToday();
+        renderToday(state.dateISO, state.planDay);
+      });
+
+      card.appendChild(item);
+    });
+  }
+
+  const tools = document.createElement("div");
+  tools.className = "card";
+  tools.innerHTML = `
+    <h2>Local Backup</h2>
+    <div class="hint">Export saves a JSON backup to Files/iCloud. Import restores it on THIS device for the selected athlete.</div>
+    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+      <button class="secondary" id="btnExport" type="button">Export JSON</button>
+      <label class="secondary" style="padding:14px 12px; border-radius:14px; border:1px solid var(--line); cursor:pointer;">
+        Import JSON <input id="fileImport" type="file" accept="application/json" style="display:none;" />
+      </label>
+    </div>
+  `;
+  view.appendChild(card);
+  view.appendChild(tools);
+
+  setTimeout(() => {
+    document.getElementById("btnExport")?.addEventListener("click", exportJSON);
+    document.getElementById("fileImport")?.addEventListener("change", importJSON);
+  }, 0);
+}
+
+function exportJSON() {
+  const all = loadAll();
+  const athlete = getAthlete();
+  const blob = new Blob([JSON.stringify(all, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `fit-tracker-${athlete}-backup-${isoToday()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importJSON(evt) {
+  const file = evt.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || typeof data !== "object") throw new Error("Invalid");
+      saveAll(data);
+      alert("Import complete.");
+      renderToday(state.dateISO, state.planDay);
+      renderHistory();
+    } catch {
+      alert("Import failed. File not valid.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function copyFromYesterday() {
+  const all = loadAll();
+  const d = new Date(state.dateISO + "T00:00:00");
+  d.setDate(d.getDate() - 1);
+  const yISO = isoToday(d);
+  if (!all[yISO]) { alert("No session found for yesterday (for this athlete)."); return; }
+  const y = all[yISO];
+
+  const s = ensureSession(state.dateISO, state.planDay);
+  s.logs = JSON.parse(JSON.stringify(y.logs || {}));
+  s.isComplete = false;
+
+  all[state.dateISO] = s;
+  saveAll(all);
+  renderToday(state.dateISO, state.planDay);
+  alert("Copied yesterday's logs into today (same athlete).");
+}
+
+/** ---------------------------
+ *  Tabs
+ *  --------------------------- */
+function switchToToday() {
+  document.getElementById("tabToday").classList.add("active");
+  document.getElementById("tabHistory").classList.remove("active");
+  document.getElementById("viewToday").style.display = "block";
+  document.getElementById("viewHistory").style.display = "none";
+  document.getElementById("btnbar").style.display = "block";
+  document.getElementById("todayControls").style.display = "flex";
+}
+function switchToHistory() {
+  document.getElementById("tabHistory").classList.add("active");
+  document.getElementById("tabToday").classList.remove("active");
+  document.getElementById("viewHistory").style.display = "block";
+  document.getElementById("viewToday").style.display = "none";
+  document.getElementById("btnbar").style.display = "none";
+  document.getElementById("todayControls").style.display = "none";
+}
+
+/** ---------------------------
+ *  State + Events
+ *  --------------------------- */
+const state = {
+  dateISO: isoToday(),
+  planDay: null,
+  weekMode: "auto"
+};
+
+// Tabs
+document.getElementById("tabToday").addEventListener("click", () => {
+  switchToToday();
+  renderToday(state.dateISO, state.planDay);
+});
+document.getElementById("tabHistory").addEventListener("click", () => {
+  switchToHistory();
+  renderHistory();
+});
+
+// Buttons
+document.getElementById("btnSave").addEventListener("click", () => alert("Saved."));
+document.getElementById("btnComplete").addEventListener("click", () => {
+  const all = loadAll();
+  const s = ensureSession(state.dateISO, state.planDay);
+  s.isComplete = true;
+  s.weekday = state.planDay;
+  s.focus = PLAN[state.planDay].focus;
+  all[state.dateISO] = s;
+  saveAll(all);
+  renderToday(state.dateISO, state.planDay);
+  alert("Marked complete ✅");
+});
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (!confirm("Reset today’s logs for this athlete?")) return;
+  const all = loadAll();
+  const s = ensureSession(state.dateISO, state.planDay);
+  s.logs = {};
+  s.isComplete = false;
+  all[state.dateISO] = s;
+  saveAll(all);
+  renderToday(state.dateISO, state.planDay);
+});
+
+// Date/week controls
+document.getElementById("datePicker").addEventListener("change", (e) => {
+  state.dateISO = e.target.value || isoToday();
+  state.planDay = computePlanDay(state.dateISO, state.weekMode);
+  renderToday(state.dateISO, state.planDay);
+});
+document.getElementById("weekMode").addEventListener("change", (e) => {
+  state.weekMode = e.target.value;
+  state.planDay = computePlanDay(state.dateISO, state.weekMode);
+  renderToday(state.dateISO, state.planDay);
+});
+document.getElementById("copyYesterday").addEventListener("click", copyFromYesterday);
+
+// Athlete selector
+const athletePick = document.getElementById("athletePick");
+athletePick.value = getAthlete();
+athletePick.addEventListener("change", (e) => {
+  setAthlete(e.target.value);
+  stopAnyTimer();
+  renderToday(state.dateISO, state.planDay);
+  if (document.getElementById("tabHistory").classList.contains("active")) renderHistory();
+});
+
+// Init
+document.getElementById("datePicker").value = state.dateISO;
+state.planDay = computePlanDay(state.dateISO, state.weekMode);
+renderToday(state.dateISO, state.planDay);
+
+// Service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
